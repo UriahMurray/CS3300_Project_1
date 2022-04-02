@@ -1,0 +1,17 @@
+Index: processor.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/processor.cpp b/processor.cpp
+--- a/processor.cpp	
++++ b/processor.cpp	(date 1647822129076)
+@@ -136,7 +136,7 @@
+         // TODO: fill in the function argument
+         reg_write = MUX(control.reg_dest)
+         reg_write_data = MUX(control.mem_to_reg, mem_read_data, alu_result);
+-        reg_file.access(reg_read_1, reg_read_2, reg_read_data_1, reg_read_data_2, reg_write_data, control.reg_write, reg_write_data);
++        reg_file.access(reg_read_1, reg_read_2, reg_read_data_1, reg_read_data_2, reg_write, control.reg_write, reg_write_data);
+         
+         
+         // TODO: Update PC
