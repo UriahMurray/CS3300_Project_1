@@ -35,6 +35,12 @@ class ALU {
                 }else if (funct == 34 || funct == 35) //100010 100011
                 {
                     ALU_control_inputs = 6; // 0110 subtract
+                }else if(opcode == 0 && funct == 0)
+                {
+                    ALU_control_inputs = 8;
+                }else if(opcode == 0 && funct == 2)
+                {
+                    ALU_control_inputs = 9;
                 }
             }else if (ALU_op == 1)
             {
@@ -109,11 +115,11 @@ class ALU {
                     out = ((int)operand_1 - (int)operand_2 < 0);
                     break;
                 case 8:
-                    out = operand_1 << operand_2;
+                    out = operand_2 << operand_1;
                     ALU_zero = out == 0;
                     break;
                 case 9:
-                    out = operand_1 >> operand_2;
+                    out = operand_2 >> operand_1;
                     ALU_zero = out == 0;
                     break;
                 case 12: //NOR

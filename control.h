@@ -30,7 +30,7 @@ struct control_t {
 //    int  rs;
 //    int  rt;
 //    int  rd;
-//    int  shift_amount;
+    bool  shift;
     int  func_bits;
 //    int immediate;
 //    int  address;
@@ -174,6 +174,7 @@ struct control_t {
             ALU_op = instruction_control_map[op_func][7];
             ALU_src = instruction_control_map[op_func][8];
             reg_write = instruction_control_map[op_func][9];
+            shift = instruction_control_map[op_func][11];
         }
         else {
             reg_dest = 1;

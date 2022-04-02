@@ -47,6 +47,7 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
             .ALU_src = 0,
             .reg_write = 0,
             .opcode = 0,
+            .shift = 0,
             .func_bits = 0};
     control.read_data(control.instruction_control_map, "data.txt"); // import control bit mapping
 
@@ -59,6 +60,9 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
     uint32_t   mem_data; // var for memory access to store data in
     uint32_t   ALU_zero; // alu zero flag
 
+    //--------------ALU VARS--------------------------------------
+    uint32_t alu_op1;
+    uint32_t  alu_op2;
 
     //-------------Instruction vars-------------------------------
     uint32_t instruction; // [31-0] // whole instruction
@@ -98,14 +102,22 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
         immediate = (short)(instruction & 0x0000ffff);//(instruction & 0x8000) ? ((instruction & 0x0000ffff) ^ 0xffff0000) : (instruction & 0x0000ffff); // [15-0] (short casing for sign extention)
         address = (instruction & 67108863); // [25-0]
 
-
-        //--------------------Execute-------------------------------
         // Read from reg file
         reg_file.access(rs, rt, reg_data_1, reg_data_2, MUX(control.reg_dest, rd, rt), 0, 0);
         if (debug) { cout << "regD1: " << (int) reg_data_1 << " regD2: " << (int) reg_data_2 << endl; }
+
+        //--------------------Execute-------------------------------
+
         // bullshit alu gen/EX
         alu.generate_control_inputs(control.ALU_op, func, opcode);
-        uint32_t alu_result = alu.execute(reg_data_1, MUX(control.ALU_src, immediate, reg_data_2), ALU_zero);
+
+        alu_op1 = MUX(control.shift, shamt, reg_data_1);
+
+        alu_op2 = MUX(control.ALU_src, immediate, reg_data_2);
+
+
+
+        uint32_t alu_result = alu.execute(alu_op1, alu_op2, ALU_zero);
         if(debug) {
             cout << "immediate: " << (int)immediate<< endl;
             cout << "ALUOUT: " << (int) alu_result << endl;
@@ -134,14 +146,14 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
         {
             mem_data &= 0x000000ff;
         }
-        if((opcode == 0) && (func == 0)) // shifts
-        {
-            alu_result = reg_data_2 << shamt;
-        }
-        if((opcode == 0) && (func == 2))
-        {
-            alu_result = reg_data_2 >> shamt;
-        } //shifts
+//        if((opcode == 0) && (func == 0)) // shifts
+//        {
+//            alu_result = reg_data_2 << shamt;
+//        }
+//        if((opcode == 0) && (func == 2))
+//        {
+//            alu_result = reg_data_2 >> shamt;
+//        } //shifts
         // Write Back
         reg_file.access(rs, rt, reg_data_1, reg_data_2, MUX(control.reg_dest, rd, rt), control.reg_write, MUX(control.mem_to_reg, mem_data, alu_result));
         //memory.print(100, 10);
