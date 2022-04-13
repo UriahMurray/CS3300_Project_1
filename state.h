@@ -13,7 +13,7 @@
 struct IFID {
     bool stall;
     uint32_t instruction;
-    int pc;
+    uint32_t pc;
     uint32_t jump_pc;
 
 };
@@ -24,7 +24,7 @@ struct IDEX {
     bool stall;
     control_t control;
     //uint32_t instruction; this should already be processed
-    int pc;
+    uint32_t pc;
     uint32_t read_data_1;
     uint32_t read_data_2;
     uint32_t sign_extended;
@@ -35,8 +35,8 @@ struct IDEX {
     uint32_t funct_bits; // for alu op
     uint32_t shamt;  
     uint32_t jump_pc;
-    int rt_num;  this is the register number we're writing to
-    int rd_num;
+    uint32_t rt_num;  this is the register number we're writing to
+    uint32_t rd_num;
     
     
 };
@@ -56,7 +56,7 @@ struct EXMEM {
     
     uint32_t jump_pc;
     uint32_t pc_alu_result;
-    int write_num;
+    uint32_t write_num;
 };
 
 // TODO:
@@ -68,7 +68,7 @@ struct MEMWB {
     uint32_t alu_result;
     uint32_t r_write;
     uint32_t jal_reg;
-    int write_num;
+    uint32_t write_num;
 };
 
 #endif
