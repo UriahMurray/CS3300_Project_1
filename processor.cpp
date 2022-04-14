@@ -4,6 +4,7 @@
 #include "reg_file.h"
 #include "ALU.h"
 #include "control.h"
+#include "state.h"
 using namespace std;
 
 //Tested:
@@ -223,11 +224,49 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
 
 
 void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
+    // Initialize ALU
+    ALU alu;
+    bool fileDebug = true;
+    //Initialize Control
+
+
+    
     uint32_t num_cycles = 0;
     uint32_t num_instrs = 0; 
-
+    struct IFID rIFID;
+    rIFID.stall = false;
+    struct IDEX rIDEX;
+    rIDEX.stall = false;
+    //Init control
+    rIDEX.control.reg_dest = 0;
+    rIDEX.control.jump = 0;
+    rIDEX.control.branchne = 0;
+    rIDEX.control.branch = 0;
+    rIDEX.control.mem_read = 0;
+    rIDEX.control.mem_to_reg = 0;
+    rIDEX.control.ALU_op = 0;
+    rIDEX.control.mem_write = 0;
+    rIDEX.control.ALU_src = 0;
+    rIDEX.control.reg_write = 0;
+    rIDEX.control.opcode = 0;
+    rIDEX.control.shift = 0;
+    rIDEX.control.func_bits = 0;
+    rIDEX.control.read_data(control.instruction_control_map, "data.txt"); // import control bit mapping
+    
     while (true) {
-
+        // This is the ID stage of things
+        rIDEX.pc = rIFID.pc;
+        rIDEX.control.decode(rIFID.instruction);
+        rIDEX.rs_num = ((rIFID.instruction>>21) & 31);
+        rIDEX.rd_num = ((rIFID.instruction>>16) & 31);
+        
+        // This is the If stage of things
+        memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
+        reg_file.pc += 4;
+        rIFID.pc = reg_file.pc;
+        rIFID.jump_pc = (rIFID.instruction & 67108863);
+        
+        
         cout << "CYCLE" << num_cycles << "\n";
 
         //reg_file.print(); // used for automated testing
