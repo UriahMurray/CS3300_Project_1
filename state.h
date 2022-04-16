@@ -36,7 +36,7 @@ struct IDEX {
     uint32_t shamt;  
     uint32_t jump_pc;
     uint32_t rs_num;
-    uint32_t rt_num;  this is the register number we're writing to
+    uint32_t rt_num; // this is the register number we're writing to
     uint32_t rd_num;
     
     

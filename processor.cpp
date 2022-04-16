@@ -235,6 +235,8 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t num_instrs = 0; 
     struct IFID rIFID;
     rIFID.stall = false;
+    rIFID.pc = 0;
+    rIFID.jump_pc = 0;
     struct IDEX rIDEX;
     rIDEX.stall = false;
     //Init control
@@ -255,10 +257,24 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     
     while (true) {
         // This is the ID stage of things
-        rIDEX.pc = rIFID.pc;
-        rIDEX.control.decode(rIFID.instruction);
-        rIDEX.rs_num = ((rIFID.instruction>>21) & 31);
-        rIDEX.rd_num = ((rIFID.instruction>>16) & 31);
+        if(!rIDEX.stall)
+        {
+            //~~~~~~~~~~~~~~~~PASS VALUES: IFID->IDEX~~~~~~~~~~~~~~~~
+            rIDEX.pc = rIFID.pc;
+            rIDEX.jump_pc = rIFID.jump_pc;
+
+            rIDEX.rs_num = ((rIFID.instruction>>0x15) & 0x1F);
+            rIDEX.rt_num = ((rIFID.instruction>>0x10) & 0x1F); //[25-11]
+            rIDEX.rd_num = ((rIFID.instruction>>0xB) & 0x1F);
+            rIDEX.sign_extended = (short)(instruction & 0x0000ffff);
+            rIDEX.funct_bits = (rIFID.instruction & 0x3F);
+            rIDEX.shamt = ((rIFID.instruction>>0x6) & 0x1F);
+            rIDEX.r_write = MUX(rIDEX.reg_dest, rd, rt)
+            //~~~~~~~~~~~~~~~DECODING CONTROL BITS~~~~~~~~~~~~~~~~~~~~
+            rIDEX.control.decode(rIFID.instruction); // decode control bits
+            //~~~~~~~~~~~~~~~REG FILE ACCESS~~~~~~~~~~~~~~~~~~~~~~~~~~
+            reg_file.access(rIDEX.rs, rIDEX.rt, rIDEX.reg_data_1, rIDEX.reg_data_2, MUX(rIDEX.control.reg_dest, rIDEX.rd, rIDEX.rt), 0, 0);
+        }
         
         // This is the If stage of things
         memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
