@@ -227,12 +227,11 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     // Initialize ALU
     ALU alu;
     bool fileDebug = true;
-    //Initialize Control
 
 
-    
+
     uint32_t num_cycles = 0;
-    uint32_t num_instrs = 0; 
+    uint32_t num_instrs = 0;
     struct IFID rIFID;
     rIFID.stall = false;
     rIFID.pc = 0;
@@ -253,36 +252,115 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rIDEX.control.opcode = 0;
     rIDEX.control.shift = 0;
     rIDEX.control.func_bits = 0;
-    rIDEX.control.read_data(control.instruction_control_map, "data.txt"); // import control bit mapping
-    
+    rIDEX.control.read_data(rIDEX.control.instruction_control_map, "data.txt"); // import control bit mapping
+    struct EXMEM rEXMEM;
+    rEXMEM.stall = false;
+    // init control
+    rEXMEM.control.reg_dest = 0;
+    rEXMEM.control.jump = 0;
+    rEXMEM.control.branchne = 0;
+    rEXMEM.control.branch = 0;
+    rEXMEM.control.mem_read = 0;
+    rEXMEM.control.mem_to_reg = 0;
+    rEXMEM.control.ALU_op = 0;
+    rEXMEM.control.mem_write = 0;
+    rEXMEM.control.ALU_src = 0;
+    rEXMEM.control.reg_write = 0;
+    rEXMEM.control.opcode = 0;
+    rEXMEM.control.shift = 0;
+    rEXMEM.control.func_bits = 0;
+    rEXMEM.control.read_data(rEXMEM.control.instruction_control_map, "data.txt");
+    struct MEMWB rMEMWB;
+    rMEMWB.stall = false;
+    // init control
+    rMEMWB.control.reg_dest = 0;
+    rMEMWB.control.jump = 0;
+    rMEMWB.control.branchne = 0;
+    rMEMWB.control.branch = 0;
+    rMEMWB.control.mem_read = 0;
+    rMEMWB.control.mem_to_reg = 0;
+    rMEMWB.control.ALU_op = 0;
+    rMEMWB.control.mem_write = 0;
+    rMEMWB.control.ALU_src = 0;
+    rMEMWB.control.reg_write = 0;
+    rMEMWB.control.opcode = 0;
+    rMEMWB.control.shift = 0;
+    rMEMWB.control.func_bits = 0;
+    rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
+
     while (true) {
+        //This is the write back stage of things
+        
+
+        // This is the mem stage of things
+        rMEMWB.control = rEXMEM.control;
+        rMEMWB.alu_result = rEXMEM.alu_result;
+        rMEMWB.r_write = rEXMEM.r_write;
+        rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
+        rMEMWB.read_data = 1; //gonna need some help here
+
+        // This is the EX stage of things
+        rEXMEM.control = rIDEX.control;
+        rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended<<2; // check this
+        rEXMEM.pc_adder = rIDEX.pc;
+        rEXMEM.read_data_2 = rIDEX.read_data_2;
+        rEXMEM.r_write = rIDEX.r_write;
+        rEXMEM.sign_extended = rIDEX.sign_extended;
+        rEXMEM.funct_bits = rIDEX.funct_bits;
+        rEXMEM.jump_pc = rIDEX.jump_pc;
+        alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
+        if (!rIDEX.control.ALU_src)
+        {
+          rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
+        }else
+        {
+          rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
+        }
+
         // This is the ID stage of things
         if(!rIDEX.stall)
         {
+            //~~~~~~~~~~~~~~~DECODING CONTROL BITS~~~~~~~~~~~~~~~~~~~~
+            rIDEX.control.decode(rIFID.instruction); // decode control bits
             //~~~~~~~~~~~~~~~~PASS VALUES: IFID->IDEX~~~~~~~~~~~~~~~~
             rIDEX.pc = rIFID.pc;
             rIDEX.jump_pc = rIFID.jump_pc;
-
+            if (!rIDEX.control.shift)
+            {
+              rIDEX.read_data_1 = ((rIFID.instruction>>0x15) & 0x1F);
+            }else
+            {
+              rIDEX.read_data_1 = ((rIFID.instruction>>0x6) & 0x1F);
+            }
+            rIDEX.read_data_2 = ((rIFID.instruction>>16) & 31);
+            rIDEX.sign_extended = (short)(rIFID.instruction & 0x0000ffff);
+            if (!rIDEX.control.reg_dest)
+            {
+              rIDEX.r_write = ((rIFID.instruction>>16) & 31);
+            }else
+            {
+              rIDEX.r_write = ((rIFID.instruction>>11) & 31);
+            }
+            rIDEX.funct_bits = (rIFID.instruction & 63);
             rIDEX.rs_num = ((rIFID.instruction>>0x15) & 0x1F);
             rIDEX.rt_num = ((rIFID.instruction>>0x10) & 0x1F); //[25-11]
             rIDEX.rd_num = ((rIFID.instruction>>0xB) & 0x1F);
-            rIDEX.sign_extended = (short)(instruction & 0x0000ffff);
-            rIDEX.funct_bits = (rIFID.instruction & 0x3F);
-            rIDEX.shamt = ((rIFID.instruction>>0x6) & 0x1F);
-            rIDEX.r_write = MUX(rIDEX.reg_dest, rd, rt)
-            //~~~~~~~~~~~~~~~DECODING CONTROL BITS~~~~~~~~~~~~~~~~~~~~
-            rIDEX.control.decode(rIFID.instruction); // decode control bits
+            rIDEX.opcode = ((rIFID.instruction>>26) & 63);
+
+        //    rIDEX.shamt = ((rIFID.instruction>>0x6) & 0x1F); no longer needed
+
+
             //~~~~~~~~~~~~~~~REG FILE ACCESS~~~~~~~~~~~~~~~~~~~~~~~~~~
-            reg_file.access(rIDEX.rs, rIDEX.rt, rIDEX.reg_data_1, rIDEX.reg_data_2, MUX(rIDEX.control.reg_dest, rIDEX.rd, rIDEX.rt), 0, 0);
+        //    reg_file.access(rIDEX.rs, rIDEX.rt, rIDEX.reg_data_1, rIDEX.reg_data_2, MUX(rIDEX.control.reg_dest, rIDEX.rd, rIDEX.rt), 0, 0);
         }
-        
+
         // This is the If stage of things
         memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
         reg_file.pc += 4;
         rIFID.pc = reg_file.pc;
         rIFID.jump_pc = (rIFID.instruction & 67108863);
-        
-        
+
+
         cout << "CYCLE" << num_cycles << "\n";
 
         //reg_file.print(); // used for automated testing
@@ -300,7 +378,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
 
 void speculative_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t num_cycles = 0;
-    uint32_t num_instrs = 0; 
+    uint32_t num_instrs = 0;
 
     while (true) {
 
@@ -320,7 +398,7 @@ void speculative_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc)
 
 void io_superscalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t num_cycles = 0;
-    uint32_t num_instrs = 0; 
+    uint32_t num_instrs = 0;
 
     while (true) {
 
@@ -341,7 +419,7 @@ void io_superscalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_
 
 void ooo_scalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t num_cycles = 0;
-    uint32_t num_instrs = 0; 
+    uint32_t num_instrs = 0;
 
     while (true) {
 
