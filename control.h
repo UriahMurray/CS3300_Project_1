@@ -32,6 +32,9 @@ struct control_t {
 //    int  rd;
     bool  shift;
     int  func_bits;
+    bool jr;
+    bool sh;
+    bool jal;
 //    int immediate;
 //    int  address;
 //    char type;
@@ -174,7 +177,11 @@ struct control_t {
             ALU_op = instruction_control_map[op_func][7];
             ALU_src = instruction_control_map[op_func][8];
             reg_write = instruction_control_map[op_func][9];
+
+            jr = instruction_control_map[op_func][10];
             shift = instruction_control_map[op_func][11];
+            jal = instruction_control_map[op_func][12];
+
         }
         else {
             reg_dest = 1;
@@ -187,6 +194,9 @@ struct control_t {
             ALU_op = 2;
             ALU_src = 0;
             reg_write = 1;
+            jr = 0;
+            shift = 0;
+            jal = 0;
         }
     }
 };
