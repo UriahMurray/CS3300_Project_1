@@ -289,34 +289,39 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
 
     while (true) {
+        num_cycles++;
         //This is the write back stage of things
-        
+
 
         // This is the mem stage of things
-        rMEMWB.control = rEXMEM.control;
-        rMEMWB.alu_result = rEXMEM.alu_result;
-        rMEMWB.r_write = rEXMEM.r_write;
-        rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
-        rMEMWB.read_data = 1; //gonna need some help here
-
-        // This is the EX stage of things
-        rEXMEM.control = rIDEX.control;
-        rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended<<2; // check this
-        rEXMEM.pc_adder = rIDEX.pc;
-        rEXMEM.read_data_2 = rIDEX.read_data_2;
-        rEXMEM.r_write = rIDEX.r_write;
-        rEXMEM.sign_extended = rIDEX.sign_extended;
-        rEXMEM.funct_bits = rIDEX.funct_bits;
-        rEXMEM.jump_pc = rIDEX.jump_pc;
-        alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
-        if (!rIDEX.control.ALU_src)
+        if(!rMEMWB.stall)
         {
-          rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
-        }else
-        {
-          rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
+          rMEMWB.control = rEXMEM.control;
+          rMEMWB.alu_result = rEXMEM.alu_result;
+          rMEMWB.r_write = rEXMEM.r_write;
+          rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
+          rMEMWB.read_data = 1; //gonna need some help here
         }
-
+        // This is the EX stage of things
+        if(!rEXMEM.stall)
+        {
+          rEXMEM.control = rIDEX.control;
+          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended<<2; // check this
+          rEXMEM.pc_adder = rIDEX.pc;
+          rEXMEM.read_data_2 = rIDEX.read_data_2;
+          rEXMEM.r_write = rIDEX.r_write;
+          rEXMEM.sign_extended = rIDEX.sign_extended;
+          rEXMEM.funct_bits = rIDEX.funct_bits;
+          rEXMEM.jump_pc = rIDEX.jump_pc;
+          alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
+          if (!rIDEX.control.ALU_src)
+          {
+            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
+          }else
+          {
+            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
+          }
+        }
         // This is the ID stage of things
         if(!rIDEX.stall)
         {
@@ -355,11 +360,14 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         }
 
         // This is the If stage of things
-        memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
-        reg_file.pc += 4;
-        rIFID.pc = reg_file.pc;
-        rIFID.jump_pc = (rIFID.instruction & 67108863);
-
+        if(!rIFID.stall)
+        {
+          num_instrs++;
+          memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
+          reg_file.pc += 4;
+          rIFID.pc = reg_file.pc;
+          rIFID.jump_pc = (rIFID.instruction & 67108863);
+        }
 
         cout << "CYCLE" << num_cycles << "\n";
 
