@@ -55,6 +55,7 @@ struct EXMEM {
     uint32_t r_write;
     uint32_t sign_extended;
     uint32_t funct_bits; // to check for loads etc.
+    uint32_t opcode;
 
     uint32_t jump_pc;
     uint32_t pc_alu_result;
@@ -70,6 +71,7 @@ struct MEMWB {
     uint32_t alu_result;
     uint32_t r_write;
     uint32_t jal_reg;
+    uint32_t opcode;
   //  uint32_t write_num; redundant
 };
 
