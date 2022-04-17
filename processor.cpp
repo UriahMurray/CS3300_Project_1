@@ -235,10 +235,12 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t num_instrs = 0;
     struct IFID rIFID;
     rIFID.stall = false;
+    rIFID.valid = false;
     rIFID.pc = 0;
     rIFID.jump_pc = 0;
     struct IDEX rIDEX;
     rIDEX.stall = false;
+    rIDEX.valid = false;
     //Init control
     rIDEX.control.reg_dest = 0;
     rIDEX.control.jump = 0;
@@ -256,6 +258,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rIDEX.control.read_data(rIDEX.control.instruction_control_map, "data.txt"); // import control bit mapping
     struct EXMEM rEXMEM;
     rEXMEM.stall = false;
+    rEXMEM.valid = false;
     // init control
     rEXMEM.control.reg_dest = 0;
     rEXMEM.control.jump = 0;
@@ -273,6 +276,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rEXMEM.control.read_data(rEXMEM.control.instruction_control_map, "data.txt");
     struct MEMWB rMEMWB;
     rMEMWB.stall = false;
+    rMEMWB.valid = false;
     // init control
     rMEMWB.control.reg_dest = 0;
     rMEMWB.control.jump = 0;
@@ -289,9 +293,13 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rMEMWB.control.func_bits = 0;
     rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
     uint32_t dummy = 0;
-    while (true) {
+    while (reg_file.pc != end_pc) {
         num_cycles++;
         //This is the write back stage of things
+        if (rMEMWB.valid)
+        {
+          num_instrs++;
+        }
         if (rMEMWB.control.jal)
         {
             reg_file.access(dummy, dummy, dummy, dummy, 0x1f, true, rMEMWB.jal_reg);
@@ -320,6 +328,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             rMEMWB.r_write = rEXMEM.r_write;
             rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
             rMEMWB.opcode = rEXMEM.opcode;
+            rMEMWB.valid = rEXMEM.valid;
             //rMEMWB.read_data = 1; //gonna need some help here: not need value set by being passed by reference
             //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
             if(rMEMWB.opcode == 0x29) // store half word jank
@@ -341,6 +350,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         // This is the EX stage of things
         if(!rEXMEM.stall)
         {
+          rEXMEM.valid = rIDEX.valid;
           rEXMEM.control = rIDEX.control;
           rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4;
           rEXMEM.pc_adder = rIDEX.pc;
@@ -367,6 +377,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             rIDEX.control.decode(rIFID.instruction); // decode control bits
             //~~~~~~~~~~~~~~~~PASS VALUES: IFID->IDEX~~~~~~~~~~~~~~~~
             rIDEX.pc = rIFID.pc;
+            rIDEX.valid = rIFID.valid;
             rIDEX.jump_pc = rIFID.jump_pc;
             //rIDEX.read_data_2 = ((rIFID.instruction>>16) & 31);
             rIDEX.sign_extended = (short)(rIFID.instruction & 0x0000ffff);
@@ -395,7 +406,13 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         // This is the If stage of things
         if(!rIFID.stall)
         {
-          num_instrs++;
+          if (rIFID.instruction != 0)
+          {
+            rIFID.valid = true;
+          }else
+          {
+            rIFID.valid = false;
+          }
           memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
           reg_file.pc += 4;
           rIFID.pc = reg_file.pc;
@@ -409,9 +426,9 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         num_cycles++;
 
         //num_instrs += committed_insts;
-        if (1) {
-            break;
-        }
+        //if (1) {
+          //  break;
+        //}
     }
 
     cout << "CPI = " << (double)num_cycles/(double)num_instrs << "\n";
