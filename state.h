@@ -12,6 +12,7 @@
 // also contains the jump register
 struct IFID {
     bool stall;
+    bool valid;
     uint32_t instruction;
     uint32_t pc;
     uint32_t jump_pc;
@@ -22,6 +23,7 @@ struct IFID {
 // IDEX Pipeline register
 struct IDEX {
     bool stall;
+    bool valid;
     control_t control;
     //uint32_t instruction; this should already be processed
     uint32_t pc;
@@ -32,7 +34,7 @@ struct IDEX {
     //uint32_t rt;
     //uint32_t rd;
     // we only need the one write register
-    uint32_t r_write; //I prefer write but this is consistent with previous name convention
+    uint32_t r_write;
     uint32_t funct_bits; // for alu op
     //uint32_t shamt;
     uint32_t jump_pc;
@@ -47,6 +49,7 @@ struct IDEX {
 // EXMEM Pipeline register
 struct EXMEM {
     bool stall;
+    bool valid;
     control_t control;
     uint32_t pc_adder;
     uint32_t alu_zero;
@@ -66,6 +69,7 @@ struct EXMEM {
 // MEMWB Pipwline register
 struct MEMWB {
     bool stall;
+    bool valid;
     control_t control;
     uint32_t read_data;
     uint32_t alu_result;
