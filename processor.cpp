@@ -295,6 +295,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t dummy = 0;
     while (reg_file.pc != end_pc) {
         num_cycles++;
+
         //This is the write back stage of things
         if (rMEMWB.valid)
         {
@@ -347,6 +348,33 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             }
             //memory.access( rMEMWB.alu_result*4,rMEMWB.read_data, rMEMWB.r_write, rMEMWB.control.mem_read, rMEMWB.control.mem_write);
         }
+
+        // forwarding happens here needs cleaning
+        if (rIDEX.rs_num == rMEMWB.r_write)
+        {
+
+        }
+        if (rIDEX.rt_num == rMEMWB.r_write)
+        {
+
+        }
+        if (rIDEX.rd_num == rMEMWB.r_write)
+        {
+
+        }
+        if (rIDEX.rs_num == rEXMEM.r_write)
+        {
+
+        }
+        if (rIDEX.rt_num == rEXMEM.r_write)
+        {
+
+        }
+        if (rIDEX.rd_num == rEXMEM.r_write)
+        {
+
+        }
+
         // This is the EX stage of things
         if(!rEXMEM.stall)
         {
@@ -421,7 +449,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
 
         cout << "CYCLE" << num_cycles << "\n";
 
-        //reg_file.print(); // used for automated testing
+        reg_file.print(); // used for automated testing
 
         num_cycles++;
 
