@@ -132,11 +132,12 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
             memory.access(alu_result*4, mem_data, reg_data_2, 1, 0);
             reg_data_2 = (reg_data_2 & 0x0000ffff) | (mem_data & 0xffff0000);
         }
-        if(opcode == 40) // store half byte jank
+        if(opcode == 0x28) // store half byte jank
         {
             memory.access(alu_result*4, mem_data, reg_data_2, 1, 0);
-            reg_data_2 = (reg_data_2 & 0x000000ff) | (mem_data & 0xffffff00);
-        } // store half word and store byte
+            reg_data_2 = (reg_data_2 & 0xFF) | (mem_data & 0xffffff00);
+        }
+        // load word or store word
         memory.access(alu_result*4, mem_data, reg_data_2, control.mem_read, control.mem_write);
         //cout << "This is memdata out" << reg_data_2 << endl;
         if(opcode == 37) // load half unsigned
@@ -291,33 +292,58 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     while (true) {
         num_cycles++;
         //This is the write back stage of things
-
+        if(opcode == 37) // load half unsigned
+        {
+            //this var need to be read_data mem_data &= 0x0000ffff;
+        }
+        if(opcode == 36) // load byte i
+        {
+            //this var need to be read_data mem_data &= 0x000000ff;
+        }
+        //reg file wrote back
+        reg_file.access(rs, rt, reg_data_1, reg_data_2, MUX(control.reg_dest, rd, rt), control.reg_write, MUX(control.mem_to_reg, mem_data, alu_result));
 
         // This is the mem stage of things
         if(!rMEMWB.stall)
         {
-          rMEMWB.control = rEXMEM.control;
-          rMEMWB.alu_result = rEXMEM.alu_result;
-          rMEMWB.r_write = rEXMEM.r_write;
-          rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
-          rMEMWB.read_data = 1; //gonna need some help here
+            //~~~~~~~~~~~~~~~~~~~~~~~~PASS VAULES: EXME->MEMWB~~~~~~~~~~~~~~~~~~~~~~~~
+            rMEMWB.control = rEXMEM.control;
+            rMEMWB.alu_result = rEXMEM.alu_result;
+            rMEMWB.r_write = rEXMEM.r_write;
+            rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
+            rMEMWB.opcode = rEXMEM.opcode;
+            //rMEMWB.read_data = 1; //gonna need some help here: not need value set by being passed by reference
+            //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
+            if(rMEMWB.opcode == 0x29) // store half word jank
+            {
+                memory.access( rMEMWB.alu_result*4, rMEMWB.read_data, rMEMWB.r_write, 1, 0);
+                rMEMWB.r_write = (rMEMWB.r_write & 0x0000ffff) | (rMEMWB.read_data & 0xffff0000);
+            }
+            if(rMEMWB.opcode == 0x28) // store half byte jank
+            {
+                memory.access( rMEMWB.alu_result*4, rMEMWB.read_data, rMEMWB.r_write, 1, 0);
+                rMEMWB.r_write = (rMEMWB.r_write & 0x000000ff) | (rMEMWB.read_data & 0xffffff00);
+            }
+            memory.access( rMEMWB.alu_result*4,rMEMWB.read_data, rMEMWB.r_write, rMEMWB.control.mem_read, rMEMWB.control.mem_write);
         }
         // This is the EX stage of things
         if(!rEXMEM.stall)
         {
           rEXMEM.control = rIDEX.control;
-          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended<<2; // check this
+          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4; // check this
           rEXMEM.pc_adder = rIDEX.pc;
           rEXMEM.read_data_2 = rIDEX.read_data_2;
           rEXMEM.r_write = rIDEX.r_write;
           rEXMEM.sign_extended = rIDEX.sign_extended;
           rEXMEM.funct_bits = rIDEX.funct_bits;
           rEXMEM.jump_pc = rIDEX.jump_pc;
+          rEXMEM.opcode = rIDEX.opcode;
           alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
           if (!rIDEX.control.ALU_src)
           {
             rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
-          }else
+          }
+          else
           {
             rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
           }
