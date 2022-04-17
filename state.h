@@ -29,7 +29,7 @@ struct IDEX {
     uint32_t pc;
     uint32_t read_data_1;
     uint32_t read_data_2;
-    uint32_t sign_extended;
+    int sign_extended;
     uint32_t opcode;
     //uint32_t rt;
     //uint32_t rd;
@@ -56,7 +56,7 @@ struct EXMEM {
     uint32_t alu_result;
     uint32_t read_data_2;
     uint32_t r_write;
-    uint32_t sign_extended;
+    int sign_extended;
     uint32_t funct_bits; // to check for loads etc.
     uint32_t opcode;
 
