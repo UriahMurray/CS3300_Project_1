@@ -288,22 +288,30 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rMEMWB.control.shift = 0;
     rMEMWB.control.func_bits = 0;
     rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
-
+    uint32_t dummy = 0;
     while (true) {
         num_cycles++;
         //This is the write back stage of things
-        if(opcode == 37) // load half unsigned
+        if (rMEMWB.control.jal)
         {
+            reg_file.access(dummy, dummy, dummy, dummy, 0x1f, true, rMEMWB.jal_reg);
+        }else if (rMEMWB.control.mem_to_reg)
+        {
+            reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.read_data);
+        }else
+        {
+            reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.alu_result);
+        }
+      //  if(rMEMWB.opcode == 37) // load half unsigned
+        //{
             //this var need to be read_data mem_data &= 0x0000ffff;
-        }
-        if(opcode == 36) // load byte i
-        {
+      //  }
+        //if(rMEMWB.opcode == 36) // load byte i
+      //  {
             //this var need to be read_data mem_data &= 0x000000ff;
-        }
-        //reg file wrote back
-        reg_file.access(rs, rt, reg_data_1, reg_data_2, MUX(control.reg_dest, rd, rt), control.reg_write, MUX(control.mem_to_reg, mem_data, alu_result));
+      //  }
 
-        // This is the mem stage of things
+      // This is the mem stage of things
         if(!rMEMWB.stall)
         {
             //~~~~~~~~~~~~~~~~~~~~~~~~PASS VAULES: EXME->MEMWB~~~~~~~~~~~~~~~~~~~~~~~~
@@ -316,21 +324,25 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
             if(rMEMWB.opcode == 0x29) // store half word jank
             {
-                memory.access( rMEMWB.alu_result*4, rMEMWB.read_data, rMEMWB.r_write, 1, 0);
-                rMEMWB.r_write = (rMEMWB.r_write & 0x0000ffff) | (rMEMWB.read_data & 0xffff0000);
-            }
-            if(rMEMWB.opcode == 0x28) // store half byte jank
+                //this needs to become a half word
+                memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+              //  rMEMWB.r_write = (rMEMWB.r_write & 0x0000ffff) | (rMEMWB.read_data & 0xffff0000);
+            }else if(rMEMWB.opcode == 0x28) // store half byte jank
             {
-                memory.access( rMEMWB.alu_result*4, rMEMWB.read_data, rMEMWB.r_write, 1, 0);
-                rMEMWB.r_write = (rMEMWB.r_write & 0x000000ff) | (rMEMWB.read_data & 0xffffff00);
+                // this needs to become a half byte
+                memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+                //rMEMWB.r_write = (rMEMWB.r_write & 0x000000ff) | (rMEMWB.read_data & 0xffffff00);
+            }else
+            {
+                memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
             }
-            memory.access( rMEMWB.alu_result*4,rMEMWB.read_data, rMEMWB.r_write, rMEMWB.control.mem_read, rMEMWB.control.mem_write);
+            //memory.access( rMEMWB.alu_result*4,rMEMWB.read_data, rMEMWB.r_write, rMEMWB.control.mem_read, rMEMWB.control.mem_write);
         }
         // This is the EX stage of things
         if(!rEXMEM.stall)
         {
           rEXMEM.control = rIDEX.control;
-          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4; // check this
+          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4;
           rEXMEM.pc_adder = rIDEX.pc;
           rEXMEM.read_data_2 = rIDEX.read_data_2;
           rEXMEM.r_write = rIDEX.r_write;
@@ -356,14 +368,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             //~~~~~~~~~~~~~~~~PASS VALUES: IFID->IDEX~~~~~~~~~~~~~~~~
             rIDEX.pc = rIFID.pc;
             rIDEX.jump_pc = rIFID.jump_pc;
-            if (!rIDEX.control.shift)
-            {
-              rIDEX.read_data_1 = ((rIFID.instruction>>0x15) & 0x1F);
-            }else
-            {
-              rIDEX.read_data_1 = ((rIFID.instruction>>0x6) & 0x1F);
-            }
-            rIDEX.read_data_2 = ((rIFID.instruction>>16) & 31);
+            //rIDEX.read_data_2 = ((rIFID.instruction>>16) & 31);
             rIDEX.sign_extended = (short)(rIFID.instruction & 0x0000ffff);
             if (!rIDEX.control.reg_dest)
             {
@@ -379,10 +384,12 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             rIDEX.opcode = ((rIFID.instruction>>26) & 63);
 
         //    rIDEX.shamt = ((rIFID.instruction>>0x6) & 0x1F); no longer needed
-
-
             //~~~~~~~~~~~~~~~REG FILE ACCESS~~~~~~~~~~~~~~~~~~~~~~~~~~
-        //    reg_file.access(rIDEX.rs, rIDEX.rt, rIDEX.reg_data_1, rIDEX.reg_data_2, MUX(rIDEX.control.reg_dest, rIDEX.rd, rIDEX.rt), 0, 0);
+            reg_file.access(rIDEX.rs_num, rIDEX.rt_num, rIDEX.read_data_1, rIDEX.read_data_2, MUX(rIDEX.control.reg_dest, rIDEX.rd_num, rIDEX.rt_num), 0, 0);
+            if (rIDEX.control.shift) // if this is a shift, the alu needs the shamt instead of rs
+            {
+              rIDEX.read_data_1 = ((rIFID.instruction>>0x6) & 0x1F);
+            }
         }
 
         // This is the If stage of things
