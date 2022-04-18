@@ -469,6 +469,36 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             {
               rIDEX.read_data_1 = ((rIFID.instruction>>0x6) & 0x1F);
             }
+            if(rIDEX.control.jump)
+            {
+              switch(rIDEX.opcode)
+              {
+                  case 0:
+                      reg_file.pc = rIDEX.read_data_1<<2;
+                      break;
+                  case 2:
+                      reg_file.pc = rIDEX.jump_pc<<2;
+                      break;
+                  case 3:
+                      //reg_file.access(0, 0, reg_data_1, reg_data_2, 31, true, (reg_file.pc+8));
+                      reg_file.pc = rIDEX.jump_pc<<2;
+                      break;
+              }
+            }
+          if (rEXMEM.opcode == 4 && rEXMEM.alu_zero) // janky branch equal
+          {
+              // reg_file.pc += immediate * 4; not sure
+              reg_file.pc = rEXMEM.pc_alu_result;
+              rIFID.valid = false;
+              rIFID.instruction = 0;
+          }
+          if (rEXMEM.opcode == 5 && !rEXMEM.alu_zero) // janky branch not equal
+          {
+              //reg_file.pc += immediate * 4; not sure
+              reg_file.pc = rEXMEM.pc_alu_result;
+              rIFID.valid = false;
+              rIFID.instruction = 0;
+          }
         }
 
         // This is the If stage of things
