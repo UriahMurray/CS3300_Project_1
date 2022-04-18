@@ -324,6 +324,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             rMEMWB.opcode = rEXMEM.opcode;
             rMEMWB.valid = rEXMEM.valid;
             rMEMWB.pc_adder = rEXMEM.pc_adder;
+            rMEMWB.funct_bits = rEXMEM.funct_bits;
             //rMEMWB.read_data = 1; //gonna need some help here: not need value set by being passed by reference
             //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
             if(rMEMWB.opcode == 0x29) // store half word jank
