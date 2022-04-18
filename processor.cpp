@@ -328,12 +328,12 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             if(rMEMWB.opcode == 0x29) // store half word jank
             {
                 memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
-                rMEMWB.read_data_2 = (rMEMWB.read_data_2 & 0x0000ffff) | bogus & 0xffff0000);
+                rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x0000ffff) | (bogus & 0xffff0000);
                 memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
             }else if(rMEMWB.opcode == 0x28) // store half byte jank
             {
                 memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
-                rMEMWB.read_data_2 = (rMEMWB.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
+                rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
                 memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
             }else
             {
