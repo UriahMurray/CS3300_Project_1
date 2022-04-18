@@ -344,33 +344,6 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         }
 
         // forwarding happens here needs cleaning
-  
-
-        // This is the EX stage of things
-        if(!rEXMEM.stall)
-        {
-          rEXMEM.valid = rIDEX.valid;
-          rEXMEM.control = rIDEX.control;
-          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4;
-          rEXMEM.pc_adder = rIDEX.pc;
-          rEXMEM.read_data_2 = rIDEX.read_data_2;
-          rEXMEM.r_write = rIDEX.r_write;
-          rEXMEM.sign_extended = rIDEX.sign_extended;
-          rEXMEM.funct_bits = rIDEX.funct_bits;
-          rEXMEM.jump_pc = rIDEX.jump_pc;
-          rEXMEM.opcode = rIDEX.opcode;
-          alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
-          if (!rIDEX.control.ALU_src)
-          {
-            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
-          }
-          else
-          {
-            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
-
-          }
-        }
-                // forwarding happens here needs cleaning
         if (rMEMWB.opcode == 0x5 || rMEMWB.opcode == 0x4 || rMEMWB.opcode == 0x3 || rMEMWB.opcode == 0x2 || rMEMWB.opcode == 0x28 || rMEMWB.opcode == 0x29 || rMEMWB.opcode == 0x38 || rMEMWB.opcode == 0x2b || (rMEMWB.opcode == 0x0 && rMEMWB.funct_bits == 0x8))
         {
           noFmemwb = true;
@@ -469,6 +442,32 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
               rIFID.stall = false;
             }
         }
+
+        // This is the EX stage of things
+        if(!rEXMEM.stall)
+        {
+          rEXMEM.valid = rIDEX.valid;
+          rEXMEM.control = rIDEX.control;
+          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4;
+          rEXMEM.pc_adder = rIDEX.pc;
+          rEXMEM.read_data_2 = rIDEX.read_data_2;
+          rEXMEM.r_write = rIDEX.r_write;
+          rEXMEM.sign_extended = rIDEX.sign_extended;
+          rEXMEM.funct_bits = rIDEX.funct_bits;
+          rEXMEM.jump_pc = rIDEX.jump_pc;
+          rEXMEM.opcode = rIDEX.opcode;
+          alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
+          if (!rIDEX.control.ALU_src)
+          {
+            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
+          }
+          else
+          {
+            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
+
+          }
+        }
+
         
         // This is the ID stage of things
         if(!rIDEX.stall)
