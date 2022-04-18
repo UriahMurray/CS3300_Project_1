@@ -233,6 +233,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
 
     uint32_t num_cycles = 0;
     uint32_t num_instrs = 0;
+    uint32_t bogus = 0;
     struct IFID rIFID;
     rIFID.stall = false;
     rIFID.valid = false;
@@ -334,21 +335,20 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
             if(rMEMWB.opcode == 0x29) // store half word jank
             {
-                //this needs to become a half word
-                memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
-              //  rMEMWB.r_write = (rMEMWB.r_write & 0x0000ffff) | (rMEMWB.read_data & 0xffff0000);
+                memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+                rMEMWB.read_data_2 = (rMEMWB.read_data_2 & 0x0000ffff) | bogus & 0xffff0000);
+                memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
             }else if(rMEMWB.opcode == 0x28) // store half byte jank
             {
-                // this needs to become a half byte
-                memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
-                //rMEMWB.r_write = (rMEMWB.r_write & 0x000000ff) | (rMEMWB.read_data & 0xffffff00);
+                memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+                rMEMWB.read_data_2 = (rMEMWB.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
+                memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
             }else
             {
                 memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
             }
-            //memory.access( rMEMWB.alu_result*4,rMEMWB.read_data, rMEMWB.r_write, rMEMWB.control.mem_read, rMEMWB.control.mem_write);
         }
-/*
+
         // forwarding happens here needs cleaning
         if (rIDEX.rs_num == rMEMWB.r_write)
         {
@@ -420,7 +420,8 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
               rIDEX.stall = false;
               rIFID.stall = false;
             }
-        } */
+        }
+
         // This is the EX stage of things
         if(!rEXMEM.stall)
         {
