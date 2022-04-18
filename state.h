@@ -78,6 +78,7 @@ struct MEMWB {
     uint32_t jal_reg;
     uint32_t opcode;
     uint32_t pc_adder;
+    uint32_t funct_bits;
 
   //  uint32_t write_num; redundant
 };
