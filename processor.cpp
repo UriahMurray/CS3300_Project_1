@@ -348,33 +348,79 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             }
             //memory.access( rMEMWB.alu_result*4,rMEMWB.read_data, rMEMWB.r_write, rMEMWB.control.mem_read, rMEMWB.control.mem_write);
         }
-
+/*
         // forwarding happens here needs cleaning
         if (rIDEX.rs_num == rMEMWB.r_write)
         {
-
+          if (!rIDEX.control.shift)
+          {
+            if (rMEMWB.valid)
+            {
+              if (rMEMWB.control.mem_to_reg)
+              {
+                rIDEX.read_data_1 = rMEMWB.read_data;
+              }else
+              {
+                rIDEX.read_data_1 = rMEMWB.alu_result;
+              }
+            }
+          }
         }
         if (rIDEX.rt_num == rMEMWB.r_write)
         {
-
+          if (rMEMWB.valid)
+          {
+            if (rMEMWB.control.mem_to_reg)
+            {
+              rIDEX.read_data_2 = rMEMWB.read_data;
+            }else
+            {
+              rIDEX.read_data_2 = rMEMWB.alu_result;
+            }
+          }
         }
-        if (rIDEX.rd_num == rMEMWB.r_write)
-        {
 
-        }
         if (rIDEX.rs_num == rEXMEM.r_write)
         {
-
+          if (!rIDEX.control.shift)
+          {
+            if (rEXMEM.valid)
+            {
+              if (rEXMEM.funct_bits == 0x24 || rEXMEM.funct_bits == 0x25 || rEXMEM.funct_bits == 0x30 || rEXMEM.funct_bits == 0xf || rEXMEM.funct_bits == 0x23)
+              {
+                rIDEX.stall = true;
+                rIFID.stall = true;
+                rEXMEM.valid = false;
+              }else
+              {
+                rIDEX.read_data_1 = rEXMEM.alu_result;
+              }
+            }else
+            {
+              rIDEX.stall = false;
+              rIFID.stall = false;
+            }
+          }
         }
         if (rIDEX.rt_num == rEXMEM.r_write)
         {
-
-        }
-        if (rIDEX.rd_num == rEXMEM.r_write)
-        {
-
-        }
-
+            if (rEXMEM.valid)
+            {
+              if (rEXMEM.funct_bits == 0x24 || rEXMEM.funct_bits == 0x25 || rEXMEM.funct_bits == 0x30 || rEXMEM.funct_bits == 0xf || rEXMEM.funct_bits == 0x23)
+              {
+                rIDEX.stall = true;
+                rIFID.stall = true;
+                rEXMEM.valid = false;
+              }else
+              {
+                rIDEX.read_data_2 = rEXMEM.alu_result;
+              }
+            }else
+            {
+              rIDEX.stall = false;
+              rIFID.stall = false;
+            }
+        } */
         // This is the EX stage of things
         if(!rEXMEM.stall)
         {
