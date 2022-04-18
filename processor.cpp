@@ -127,16 +127,7 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
         }
         //--------------------Store----------------------------------
         // Memory
-        if(opcode == 41) // store half word jank
-        {
-            memory.access(alu_result*4, mem_data, reg_data_2, 1, 0);
-            reg_data_2 = (reg_data_2 & 0x0000ffff) | (mem_data & 0xffff0000);
-        }
-        if(opcode == 0x28) // store half byte jank
-        {
-            memory.access(alu_result*4, mem_data, reg_data_2, 1, 0);
-            reg_data_2 = (reg_data_2 & 0xFF) | (mem_data & 0xffffff00);
-        }
+
         // load word or store word
         memory.access(alu_result*4, mem_data, reg_data_2, control.mem_read, control.mem_write);
         //cout << "This is memdata out" << reg_data_2 << endl;
@@ -189,7 +180,7 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
         cout << "Program Counter: " << reg_file.pc << endl;
         if (opcode == 4 && ALU_zero) // janky branch equal
         {
-            reg_file.pc += immediate * 4;
+            reg_file.pc += immediate   * 4;
         }
         if (opcode == 5 && !ALU_zero) // janky branch not equal
         {
@@ -294,7 +285,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rMEMWB.control.func_bits = 0;
     rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
     uint32_t dummy = 0;
-    while (reg_file.pc != end_pc) {
+    while (true) {
         num_cycles++;
 
         //This is the write back stage of things
@@ -331,6 +322,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
             rMEMWB.opcode = rEXMEM.opcode;
             rMEMWB.valid = rEXMEM.valid;
+            rMEMWB.pc_adder = rEXMEM.pc_adder;
             //rMEMWB.read_data = 1; //gonna need some help here: not need value set by being passed by reference
             //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
             if(rMEMWB.opcode == 0x29) // store half word jank
@@ -443,6 +435,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
           else
           {
             rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
+
           }
         }
         // This is the ID stage of things
@@ -500,10 +493,11 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
 
         num_cycles++;
 
+
         //num_instrs += committed_insts;
-        //if (1) {
-          //  break;
-        //}
+        if (rMEMWB.pc_adder == end_pc) {
+            break;
+        }
     }
 
     cout << "CPI = " << (double)num_cycles/(double)num_instrs << "\n";
@@ -561,7 +555,9 @@ void ooo_scalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) 
         //reg_file.print(); // used for automated testing
 
         num_cycles++;
-
+        reg_file.print();
+        cout << "\nEND_PC: " << end_pc << endl;
+        cout << "\nCOMMITED: " << num_instrs << endl;
         //num_instrs += committed_insts;
         if (1) {
             break;

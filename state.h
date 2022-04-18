@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include "control.h"
+using namespace std;
 //
 // Pipeline registers implementation
 //
@@ -76,7 +77,23 @@ struct MEMWB {
     uint32_t r_write;
     uint32_t jal_reg;
     uint32_t opcode;
+    uint32_t pc_adder;
+
   //  uint32_t write_num; redundant
 };
+
+//void print_memwb()
+//{
+//    cout << "~~~~~~~~~ v MEMWB CURRENT STATE v ~~~~~~~~~" << endl;
+//    cout << "stall      : " <<   MEMWB.stall      << endl;
+//    cout << "valid      : " <<   MEMWB.valid      << endl;
+//    cout << "control    : " <<   MEMWB.control    << endl;
+//    cout << "read_data  : " <<   MEMWB.read_data  << endl;
+//    cout << "alu_result : " <<   MEMWB.alu_result << endl;
+//    cout << "r_write    : " <<   MEMWB.r_write    << endl;
+//    cout << "jal_reg    : " <<   MEMWB.jal_reg    << endl;
+//    cout << "opcode     : " <<   MEMWB.opcode     << endl;
+//    cout << "~~~~~~~~~ ^ MEMWB CURRENT STATE ^ ~~~~~~~~~" << endl;
+//}
 
 #endif
