@@ -219,13 +219,15 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     // Initialize ALU
     ALU alu;
     bool fileDebug = true;
-
+    bool end = false;
+    int countdown = 1;
     bool stallhaz = false;
     bool noFmemwb = false;
     bool noFexmem = false;
     uint32_t num_cycles = 0;
     uint32_t num_instrs = 0;
     uint32_t bogus = 0;
+    int finishpc = 0;
     struct IFID rIFID;
     rIFID.stall = false;
     rIFID.valid = false;
@@ -286,11 +288,19 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rMEMWB.control.func_bits = 0;
     rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
     uint32_t dummy = 0;
-    while (true) {
+    while (!end) {
         num_cycles++;
         stallhaz = false;
         rIDEX.stall = false;
         rIFID.stall = false;
+        if ((reg_file.pc) == end_pc+16)
+        {
+  //        if (countdown == 0)
+  //        {
+            end = true;
+//          }
+//          countdown--;
+        }
         // forwarding happens here needs cleaning
 
          if (rIDEX.rs_num == rMEMWB.r_write)
@@ -402,6 +412,8 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         {
           num_instrs++;
         }
+        finishpc = rMEMWB.pc_adder;
+
         //~~~~~~~~~~~~~~~~~~~~~LOAD HALF WORDS AND BYTE MASKING~~~~~~~~~~~~~~~~~~~~~
         if(rMEMWB.opcode == 37) // load half unsigned
         {
@@ -413,7 +425,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         }
         if (rMEMWB.control.jal)
         {
-            reg_file.access(dummy, dummy, dummy, dummy, 0x1f, true, rMEMWB.jal_reg);
+          //  reg_file.access(dummy, dummy, dummy, dummy, 0x1f, true, rMEMWB.jal_reg);
         }else if (rMEMWB.control.mem_to_reg)
         {
             reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.read_data);
@@ -558,6 +570,8 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
               reg_file.pc = rEXMEM.pc_alu_result;
               rIFID.valid = false;
               rIFID.instruction = 0;
+              rIDEX.stall = true;
+              rIFID.stall = true;
           }
           if (rEXMEM.opcode == 5 && !rEXMEM.alu_zero) // janky branch not equal
           {
@@ -565,6 +579,8 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
               reg_file.pc = rEXMEM.pc_alu_result;
               rIFID.valid = false;
               rIFID.instruction = 0;
+              rIDEX.stall = true;
+              rIFID.stall = true;
           }
         }
 
@@ -590,14 +606,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         cout << "CYCLE" << num_cycles << "\n";
 
         reg_file.print(); // used for automated testing
-
-        num_cycles++;
-
-
         //num_instrs += committed_insts;
-        if (rMEMWB.pc_adder == end_pc) {
-            break;
-        }
     }
 
     cout << "CPI = " << (double)num_cycles/(double)num_instrs << "\n";
