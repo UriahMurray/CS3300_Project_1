@@ -25,6 +25,7 @@ struct IFID {
 struct IDEX {
     bool stall;
     bool valid;
+    bool last;
     control_t control;
     //uint32_t instruction; this should already be processed
     uint32_t pc;
@@ -51,6 +52,7 @@ struct IDEX {
 struct EXMEM {
     bool stall;
     bool valid;
+    bool last;
     control_t control;
     uint32_t pc_adder;
     uint32_t alu_zero;
