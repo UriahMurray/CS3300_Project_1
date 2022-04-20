@@ -5,6 +5,7 @@
 #include "ALU.h"
 #include "control.h"
 #include "state.h"
+#include "BPU.h"
 using namespace std;
 
 //Tested:
@@ -220,14 +221,12 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     ALU alu;
     bool fileDebug = true;
     bool end = false;
-    int countdown = 1;
     bool stallhaz = false;
     bool noFmemwb = false;
     bool noFexmem = false;
     uint32_t num_cycles = 0;
     uint32_t num_instrs = 0;
     uint32_t bogus = 0;
-    int finishpc = 0;
     struct IFID rIFID;
     rIFID.stall = false;
     rIFID.valid = false;
@@ -250,6 +249,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rIDEX.control.opcode = 0;
     rIDEX.control.shift = 0;
     rIDEX.control.func_bits = 0;
+    rIDEX.control.jal = 0;
     rIDEX.control.read_data(rIDEX.control.instruction_control_map, "data.txt"); // import control bit mapping
     struct EXMEM rEXMEM;
     rEXMEM.stall = false;
@@ -268,6 +268,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rEXMEM.control.opcode = 0;
     rEXMEM.control.shift = 0;
     rEXMEM.control.func_bits = 0;
+    rEXMEM.control.jal = 0;
     rEXMEM.control.read_data(rEXMEM.control.instruction_control_map, "data.txt");
     struct MEMWB rMEMWB;
     rMEMWB.stall = false;
@@ -286,6 +287,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     rMEMWB.control.opcode = 0;
     rMEMWB.control.shift = 0;
     rMEMWB.control.func_bits = 0;
+    rMEMWB.control.jal = 0;
     rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
     uint32_t dummy = 0;
     while (!end) {
@@ -295,11 +297,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         rIFID.stall = false;
         if ((reg_file.pc) == end_pc+16)
         {
-  //        if (countdown == 0)
-  //        {
             end = true;
-//          }
-//          countdown--;
         }
         // forwarding happens here needs cleaning
 
@@ -412,7 +410,6 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         {
           num_instrs++;
         }
-        finishpc = rMEMWB.pc_adder;
 
         //~~~~~~~~~~~~~~~~~~~~~LOAD HALF WORDS AND BYTE MASKING~~~~~~~~~~~~~~~~~~~~~
         if(rMEMWB.opcode == 37) // load half unsigned
@@ -423,7 +420,7 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
         {
           rMEMWB.read_data &= 0x000000ff;
         }
-        if (rMEMWB.control.jal)
+        if (false/*rMEMWB.control.jal*/)
         {
           //  reg_file.access(dummy, dummy, dummy, dummy, 0x1f, true, rMEMWB.jal_reg);
         }else if (rMEMWB.control.mem_to_reg)
@@ -431,7 +428,10 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.read_data);
         }else
         {
+          if (!rMEMWB.control.mem_write)
+          {
             reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.alu_result);
+          }
         }
       //  if(rMEMWB.opcode == 37) // load half unsigned
         //{
@@ -613,24 +613,449 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
 }
 
 void speculative_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
-    uint32_t num_cycles = 0;
-    uint32_t num_instrs = 0;
+  // Initialize ALU
+  ALU alu;
+  BPU bpu;
+  bool fileDebug = true;
+  bool end = false;
+  bool stallhaz = false;
+  bool noFmemwb = false;
+  bool noFexmem = false;
+  uint32_t num_cycles = 0;
+  uint32_t num_instrs = 0;
+  uint32_t bogus = 0;
+  struct IFID rIFID;
+  rIFID.stall = false;
+  rIFID.valid = false;
+  rIFID.pc = 0;
+  rIFID.jump_pc = 0;
+  struct IDEX rIDEX;
+  rIDEX.stall = false;
+  rIDEX.valid = false;
+  //Init control
+  rIDEX.control.reg_dest = 0;
+  rIDEX.control.jump = 0;
+  rIDEX.control.branchne = 0;
+  rIDEX.control.branch = 0;
+  rIDEX.control.mem_read = 0;
+  rIDEX.control.mem_to_reg = 0;
+  rIDEX.control.ALU_op = 0;
+  rIDEX.control.mem_write = 0;
+  rIDEX.control.ALU_src = 0;
+  rIDEX.control.reg_write = 0;
+  rIDEX.control.opcode = 0;
+  rIDEX.control.shift = 0;
+  rIDEX.control.func_bits = 0;
+  rIDEX.control.jal = 0;
+  rIDEX.control.read_data(rIDEX.control.instruction_control_map, "data.txt"); // import control bit mapping
+  struct EXMEM rEXMEM;
+  rEXMEM.stall = false;
+  rEXMEM.valid = false;
+  // init control
+  rEXMEM.control.reg_dest = 0;
+  rEXMEM.control.jump = 0;
+  rEXMEM.control.branchne = 0;
+  rEXMEM.control.branch = 0;
+  rEXMEM.control.mem_read = 0;
+  rEXMEM.control.mem_to_reg = 0;
+  rEXMEM.control.ALU_op = 0;
+  rEXMEM.control.mem_write = 0;
+  rEXMEM.control.ALU_src = 0;
+  rEXMEM.control.reg_write = 0;
+  rEXMEM.control.opcode = 0;
+  rEXMEM.control.shift = 0;
+  rEXMEM.control.func_bits = 0;
+  rEXMEM.control.jal = 0;
+  rEXMEM.control.read_data(rEXMEM.control.instruction_control_map, "data.txt");
+  struct MEMWB rMEMWB;
+  rMEMWB.stall = false;
+  rMEMWB.valid = false;
+  // init control
+  rMEMWB.control.reg_dest = 0;
+  rMEMWB.control.jump = 0;
+  rMEMWB.control.branchne = 0;
+  rMEMWB.control.branch = 0;
+  rMEMWB.control.mem_read = 0;
+  rMEMWB.control.mem_to_reg = 0;
+  rMEMWB.control.ALU_op = 0;
+  rMEMWB.control.mem_write = 0;
+  rMEMWB.control.ALU_src = 0;
+  rMEMWB.control.reg_write = 0;
+  rMEMWB.control.opcode = 0;
+  rMEMWB.control.shift = 0;
+  rMEMWB.control.func_bits = 0;
+  rMEMWB.control.jal = 0;
+  rMEMWB.control.read_data(rMEMWB.control.instruction_control_map, "data.txt");
+  uint32_t dummy = 0;
+  while (!end) {
+      num_cycles++;
+      stallhaz = false;
+      rIDEX.stall = false;
+      rIFID.stall = false;
+      if ((reg_file.pc) == end_pc+16)
+      {
+          end = true;
+      }
+      // forwarding happens here needs cleaning
 
-    while (true) {
+       if (rIDEX.rs_num == rMEMWB.r_write)
+       {
+         if (rMEMWB.opcode == 0x5 || rMEMWB.opcode == 0x4 || rMEMWB.opcode == 0x3 || rMEMWB.opcode == 0x2 || rMEMWB.opcode == 0x28 || rMEMWB.opcode == 0x29 || rMEMWB.opcode == 0x38 || rMEMWB.opcode == 0x2b || (rMEMWB.opcode == 0x0 && rMEMWB.funct_bits == 0x8))
+         {
+           noFmemwb = true;
+         }else
+         {
+           noFmemwb = false;
+         }
+         if (!rIDEX.control.shift)
+         {
+           if (1/*rMEMWB.valid*/)
+           {
+             if (!noFmemwb)
+             {
+               if (rMEMWB.control.mem_to_reg)
+               {
+                 rIDEX.read_data_1 = rMEMWB.read_data;
+               }else
+               {
+                 rIDEX.read_data_1 = rMEMWB.alu_result;
+               }
+             }
+           }
+         }
+       }
+       if (rIDEX.rt_num == rMEMWB.r_write)
+       {
+         if (rMEMWB.opcode == 0x5 || rMEMWB.opcode == 0x4 || rMEMWB.opcode == 0x3 || rMEMWB.opcode == 0x2 || rMEMWB.opcode == 0x28 || rMEMWB.opcode == 0x29 || rMEMWB.opcode == 0x38 || rMEMWB.opcode == 0x2b || (rMEMWB.opcode == 0x0 && rMEMWB.funct_bits == 0x8))
+         {
+           noFmemwb = true;
+         }else
+         {
+           noFmemwb = false;
+         }
+         if (1/*rMEMWB.valid*/)
+         {
+           if (!noFmemwb)
+           {
+             if (rMEMWB.control.mem_to_reg)
+             {
+               rIDEX.read_data_2 = rMEMWB.read_data;
+             }else
+             {
+               rIDEX.read_data_2 = rMEMWB.alu_result;
+             }
+           }
+         }
+       }
 
-        cout << "CYCLE" << num_cycles << "\n";
+       if (rIDEX.rs_num == rEXMEM.r_write)
+       {
+         if (rEXMEM.opcode == 0x5 || rEXMEM.opcode == 0x4 || rEXMEM.opcode == 0x3 || rEXMEM.opcode == 0x2 || rEXMEM.opcode == 0x28 || rEXMEM.opcode == 0x29 || rEXMEM.opcode == 0x38 || rEXMEM.opcode == 0x2b || (rEXMEM.opcode == 0x0 && rEXMEM.funct_bits == 0x8))
+         {
+           noFexmem = true;
+         }else
+         {
+           noFexmem = false;
+         }
+         if (!rIDEX.control.shift)
+         {
+           if (1/*rEXMEM.valid*/)
+           {
+             if (!noFexmem)
+             {
+               if (rEXMEM.opcode == 0x24 || rEXMEM.opcode == 0x25 || rEXMEM.opcode == 0x30 || rEXMEM.opcode == 0xf || rEXMEM.opcode == 0x23)
+               {
+                 rIDEX.stall = true;
+                 rIFID.stall = true;
+                 stallhaz = true;
+               }else
+               {
+                 rIDEX.read_data_1 = rEXMEM.alu_result;
+               }
+             }
+           }
+         }
+       }
+       if (rIDEX.rt_num == rEXMEM.r_write)
+       {
+         if (rEXMEM.opcode == 0x5 || rEXMEM.opcode == 0x4 || rEXMEM.opcode == 0x3 || rEXMEM.opcode == 0x2 || rEXMEM.opcode == 0x28 || rEXMEM.opcode == 0x29 || rEXMEM.opcode == 0x38 || rEXMEM.opcode == 0x2b || (rEXMEM.opcode == 0x0 && rEXMEM.funct_bits == 0x8))
+         {
+           noFexmem = true;
+         }else
+         {
+           noFexmem = false;
+         }
+           if (1/*rEXMEM.valid*/)
+           {
+             if (!noFexmem)
+             {
+               if (rEXMEM.opcode == 0x24 || rEXMEM.opcode == 0x25 || rEXMEM.opcode == 0x30 || rEXMEM.opcode == 0xf || rEXMEM.opcode == 0x23)
+               {
+                 rIDEX.stall = true;
+                 rIFID.stall = true;
+                 stallhaz = true;
+               }else
+               {
+                 rIDEX.read_data_2 = rEXMEM.alu_result;
+               }
+             }
+           }
+       }
 
-        reg_file.print(); // used for automated testing
+      //This is the write back stage of things
+      if (rMEMWB.valid)
+      {
+        num_instrs++;
+      }
 
-        num_cycles++;
-
-        //num_instrs += committed_insts;
-        if (1) {
-            break;
+      //~~~~~~~~~~~~~~~~~~~~~LOAD HALF WORDS AND BYTE MASKING~~~~~~~~~~~~~~~~~~~~~
+      if(rMEMWB.opcode == 37) // load half unsigned
+      {
+        rMEMWB.read_data &= 0x0000ffff;
+      }
+      if(rMEMWB.opcode == 36) // load byte i
+      {
+        rMEMWB.read_data &= 0x000000ff;
+      }
+      if (false/*rMEMWB.control.jal*/)
+      {
+        //  reg_file.access(dummy, dummy, dummy, dummy, 0x1f, true, rMEMWB.jal_reg);
+      }else if (rMEMWB.control.mem_to_reg)
+      {
+          reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.read_data);
+      }else
+      {
+        if (!rMEMWB.control.mem_write)
+        {
+          reg_file.access(dummy, dummy, dummy, dummy, rMEMWB.r_write, rMEMWB.control.reg_write, rMEMWB.alu_result);
         }
-    }
-    cout << "CPI = " << (double)num_cycles/(double)num_instrs << "\n";
-}
+      }
+    //  if(rMEMWB.opcode == 37) // load half unsigned
+      //{
+          //this var need to be read_data mem_data &= 0x0000ffff;
+    //  }
+      //if(rMEMWB.opcode == 36) // load byte i
+    //  {
+          //this var need to be read_data mem_data &= 0x000000ff;
+    //  }
+
+    // This is the mem stage of things
+      if(!rMEMWB.stall)
+      {
+          //~~~~~~~~~~~~~~~~~~~~~~~~PASS VAULES: EXME->MEMWB~~~~~~~~~~~~~~~~~~~~~~~~
+          rMEMWB.control = rEXMEM.control;
+          rMEMWB.alu_result = rEXMEM.alu_result;
+          rMEMWB.r_write = rEXMEM.r_write;
+          rMEMWB.jal_reg = rEXMEM.pc_adder + 4;
+          rMEMWB.opcode = rEXMEM.opcode;
+          rMEMWB.valid = rEXMEM.valid;
+          rMEMWB.pc_adder = rEXMEM.pc_adder;
+          rMEMWB.funct_bits = rEXMEM.funct_bits;
+          //rMEMWB.read_data = 1; //gonna need some help here: not need value set by being passed by reference
+          //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
+          if(rMEMWB.opcode == 0x29) // store half word jank
+          {
+              memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+              rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x0000ffff) | (bogus & 0xffff0000);
+              memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+          }else if(rMEMWB.opcode == 0x28) // store half byte jank
+          {
+              memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+              rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
+              memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+          }else
+          {
+              memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
+          }
+      }
+
+
+      // This is the EX stage of things
+      if(!rEXMEM.stall)
+      {
+        if (!stallhaz)
+        {
+          rEXMEM.valid = rIDEX.valid;
+          rEXMEM.last = rIDEX.last;
+          rEXMEM.control = rIDEX.control;
+          rEXMEM.pc_alu_result = rIDEX.pc + rIDEX.sign_extended*4;
+          rEXMEM.pc_adder = rIDEX.pc;
+          rEXMEM.read_data_2 = rIDEX.read_data_2;
+          rEXMEM.r_write = rIDEX.r_write;
+          rEXMEM.sign_extended = rIDEX.sign_extended;
+          rEXMEM.funct_bits = rIDEX.funct_bits;
+          rEXMEM.jump_pc = rIDEX.jump_pc;
+          rEXMEM.opcode = rIDEX.opcode;
+          alu.generate_control_inputs(rIDEX.control.ALU_op, rIDEX.funct_bits, rIDEX.opcode);
+          if (!rIDEX.control.ALU_src)
+          {
+            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.read_data_2, rEXMEM.alu_zero);
+          }
+          else
+          {
+            rEXMEM.alu_result = alu.execute(rIDEX.read_data_1, rIDEX.sign_extended, rEXMEM.alu_zero);
+
+          }
+        }else
+        {
+          rEXMEM.valid = false;
+          rEXMEM.control.decode(0);
+          rEXMEM.pc_alu_result = 0;
+          rEXMEM.pc_adder = 0;
+          rEXMEM.read_data_2 = 0;
+          rEXMEM.r_write = 0;
+          rEXMEM.sign_extended = 0;
+          rEXMEM.funct_bits = 0;
+          rEXMEM.jump_pc = 0;
+          rEXMEM.opcode = 0;
+          alu.generate_control_inputs(rEXMEM.control.ALU_op, 0, 0);
+          rEXMEM.alu_result = 0;
+          //cout << "I helped";
+        }
+      }
+
+
+      // This is the ID stage of things
+      if(!rIDEX.stall)
+      {
+          //~~~~~~~~~~~~~~~DECODING CONTROL BITS~~~~~~~~~~~~~~~~~~~~
+          rIDEX.control.decode(rIFID.instruction); // decode control bits
+          //~~~~~~~~~~~~~~~~PASS VALUES: IFID->IDEX~~~~~~~~~~~~~~~~
+          rIDEX.pc = rIFID.pc;
+          rIDEX.valid = rIFID.valid;
+          rIDEX.jump_pc = rIFID.jump_pc;
+          //rIDEX.read_data_2 = ((rIFID.instruction>>16) & 31);
+          rIDEX.sign_extended = (short)(rIFID.instruction & 0x0000ffff);
+          if (!rIDEX.control.reg_dest)
+          {
+            rIDEX.r_write = ((rIFID.instruction>>16) & 31);
+          }else
+          {
+            rIDEX.r_write = ((rIFID.instruction>>11) & 31);
+          }
+          rIDEX.funct_bits = (rIFID.instruction & 63);
+          rIDEX.rs_num = ((rIFID.instruction>>0x15) & 0x1F);
+          rIDEX.rt_num = ((rIFID.instruction>>0x10) & 0x1F); //[25-11]
+          rIDEX.rd_num = ((rIFID.instruction>>0xB) & 0x1F);
+          rIDEX.opcode = ((rIFID.instruction>>26) & 63);
+
+      //    rIDEX.shamt = ((rIFID.instruction>>0x6) & 0x1F); no longer needed
+          //~~~~~~~~~~~~~~~REG FILE ACCESS~~~~~~~~~~~~~~~~~~~~~~~~~~
+          reg_file.access(rIDEX.rs_num, rIDEX.rt_num, rIDEX.read_data_1, rIDEX.read_data_2, MUX(rIDEX.control.reg_dest, rIDEX.rd_num, rIDEX.rt_num), 0, 0);
+          if (rIDEX.control.shift) // if this is a shift, the alu needs the shamt instead of rs
+          {
+            rIDEX.read_data_1 = ((rIFID.instruction>>0x6) & 0x1F);
+          }
+          if(rIDEX.control.jump)
+          {
+            switch(rIDEX.opcode)
+            {
+                case 0:
+                    reg_file.pc = rIDEX.read_data_1<<2;
+                    break;
+                case 2:
+                    reg_file.pc = rIDEX.jump_pc<<2;
+                    break;
+                case 3:
+                    //reg_file.access(0, 0, reg_data_1, reg_data_2, 31, true, (reg_file.pc+8));
+                    reg_file.pc = rIDEX.jump_pc<<2;
+                    break;
+            }
+          }
+        if (rIDEX.opcode == 4)
+        {
+          rIDEX.last = bpu.predict(rIDEX.pc);
+          if (rIDEX.last)
+          {
+            reg_file.pc = (rIFID.instruction & 0x0000ffff);
+          }
+        }
+        if (rIDEX.opcode == 5)
+        {
+          rIDEX.last = bpu.predict(rIDEX.pc);
+          if (rIDEX.last)
+          {
+            reg_file.pc = (rIFID.instruction & 0x0000ffff);
+          }
+        }
+        if (rEXMEM.opcode == 4) // janky branch equal
+        {
+            if (rEXMEM.alu_zero)
+            {
+              bpu.update(rEXMEM.pc_adder, true);
+            }else
+            {
+              bpu.update(rEXMEM.pc_adder, false);
+            }
+            if (rEXMEM.last && !rEXMEM.alu_zero)
+            {
+              reg_file.pc = rEXMEM.pc_adder;
+              rIFID.valid = false;
+              rIFID.instruction = 0;
+              rIDEX.stall = true;
+              rIFID.stall = true;
+            }else if (!rEXMEM.last && rEXMEM.alu_zero)
+            {
+              reg_file.pc = rEXMEM.pc_alu_result;
+              rIFID.valid = false;
+              rIFID.instruction = 0;
+              rIDEX.stall = true;
+              rIFID.stall = true;
+            }
+        }
+        if (rEXMEM.opcode == 5) // janky branch not equal
+        {
+          if (rEXMEM.alu_zero)
+          {
+            bpu.update(rEXMEM.pc_adder, false);
+          }else
+          {
+            bpu.update(rEXMEM.pc_adder, true);
+          }
+          if (!rEXMEM.last && !rEXMEM.alu_zero)
+          {
+            reg_file.pc = rEXMEM.pc_alu_result;
+            rIFID.valid = false;
+            rIFID.instruction = 0;
+            rIDEX.stall = true;
+            rIFID.stall = true;
+          }else if (rEXMEM.last && rEXMEM.alu_zero)
+          {
+            reg_file.pc = rEXMEM.pc_adder;
+            rIFID.valid = false;
+            rIFID.instruction = 0;
+            rIDEX.stall = true;
+            rIFID.stall = true;
+          }
+        }
+      }
+
+      // This is the If stage of things
+      if(!rIFID.stall)
+      {
+        if (rIFID.instruction != 0)
+        {
+          rIFID.valid = true;
+        }else
+        {
+          rIFID.valid = false;
+        }
+        memory.access(reg_file.pc, rIFID.instruction, 0, 1, 0);
+        reg_file.pc += 4;
+        rIFID.pc = reg_file.pc;
+        rIFID.jump_pc = (rIFID.instruction & 67108863);
+      }
+
+
+
+
+      cout << "CYCLE" << num_cycles << "\n";
+
+      reg_file.print(); // used for automated testing
+      //num_instrs += committed_insts;
+  }
+
+  cout << "CPI = " << (double)num_cycles/(double)num_instrs << "\n";}
 
 void io_superscalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
     uint32_t num_cycles = 0;
