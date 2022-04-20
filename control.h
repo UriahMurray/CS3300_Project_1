@@ -10,7 +10,7 @@
 #include <string>
 using namespace std;
 bool debug = true;
-bool fileDebug = true;
+bool fileDebug = false;
 // Control signals for the processor
 struct control_t {
 
@@ -145,6 +145,32 @@ struct control_t {
     }
     // TODO:
     // Decode instructions into control signals
+    bool isValid(pair<int, int> op_func)
+{
+    bool valid = false;
+    int O = op_func.first;
+    int F = op_func.second;
+
+    if(O == 0) {
+        vector<int> rop = {32, 33, 36, 8, 39, 37, 0, 42, 43, 2, 34, 35};
+        for (int i = 0; i < rop.size(); i++) {
+            if (rop[i] == F) {
+                valid = true;
+            }
+        }
+    }
+
+    if(F == -1) {
+        vector<int> IJ_opcode = {2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 15, 35, 36, 37, 40, 41, 43, 48, 56};
+        for (int i = 0; i < IJ_opcode.size(); i++) {
+            if (IJ_opcode[i] != O) {
+                valid = true;
+            }
+        }
+    }
+
+    return valid;
+}
     void decode(uint32_t instruction)
     {
 
@@ -165,7 +191,7 @@ struct control_t {
         // assigning the control bits the correct values from
         // the control vector
         // NOTE: this is where you'd add a new control line if needed'
-        if(instruction != 0)
+        if(instruction != 0 && isValid(op_func))
         {
             reg_dest = instruction_control_map[op_func][0];
             jump = instruction_control_map[op_func][1];
@@ -184,16 +210,16 @@ struct control_t {
 
         }
         else {
-            reg_dest = 1;
+            reg_dest = 0;
             jump = 0;
             branch = 0;
             branchne = 0;
             mem_read = 0;
             mem_to_reg = 0;
             mem_write = 0;
-            ALU_op = 2;
+            ALU_op = 0;
             ALU_src = 0;
-            reg_write = 1;
+            reg_write = 0;
             jr = 0;
             shift = 0;
             jal = 0;
