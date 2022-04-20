@@ -9,14 +9,23 @@ class BPU {
     // you can enter the branch predictor contest and
     // win a prize!
     public:
+        int take = 0;
+      //  bool last = true;
         void update(uint32_t pc, bool taken){
-            // call this when you
-            // figure out whether the branch is actually taken
+            if (taken) {
+
+                if (take < 3) {take++;}
+
+            }
+            else {
+                if (take > 0) {take--;}
+
+            }
         };
-        
+
         bool predict(uint32_t pc){
-            // call this during instruction fetch
-            return 1; // always predicts taken
+        //    last = (take > 1);
+            return (take > 1); // predicts taken when 10 or 11 else (00, 01) not taken
         }
-    
+
 };
