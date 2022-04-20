@@ -130,7 +130,7 @@ void single_cycle_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc
         // Memory
 
         // load word or store word
-        memory.access(alu_result*4, mem_data, reg_data_2, control.mem_read, control.mem_write);
+        memory.access(alu_result*4+400, mem_data, reg_data_2, control.mem_read, control.mem_write);
         //cout << "This is memdata out" << reg_data_2 << endl;
         if(opcode == 37) // load half unsigned
         {
@@ -458,17 +458,17 @@ void pipelined_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc) {
             //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
             if(rMEMWB.opcode == 0x29) // store half word jank
             {
-                memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+                memory.access(rEXMEM.alu_result*4+400, bogus, rEXMEM.read_data_2, 1, 0);
                 rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x0000ffff) | (bogus & 0xffff0000);
-                memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+                memory.access(rEXMEM.alu_result*4+400, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
             }else if(rMEMWB.opcode == 0x28) // store half byte jank
             {
-                memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+                memory.access(rEXMEM.alu_result*4+400, bogus, rEXMEM.read_data_2, 1, 0);
                 rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
-                memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+                memory.access(rEXMEM.alu_result*4+400, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
             }else
             {
-                memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
+                memory.access( rEXMEM.alu_result*4+400, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
             }
         }
 
@@ -855,17 +855,17 @@ void speculative_main_loop(Registers &reg_file, Memory &memory, uint32_t end_pc)
           //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
           if(rMEMWB.opcode == 0x29) // store half word jank
           {
-              memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+              memory.access(rEXMEM.alu_result*4+400, bogus, rEXMEM.read_data_2, 1, 0);
               rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x0000ffff) | (bogus & 0xffff0000);
-              memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+              memory.access(rEXMEM.alu_result*4+400, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
           }else if(rMEMWB.opcode == 0x28) // store half byte jank
           {
-              memory.access(rEXMEM.alu_result*4, bogus, rEXMEM.read_data_2, 1, 0);
+              memory.access(rEXMEM.alu_result*4+400, bogus, rEXMEM.read_data_2, 1, 0);
               rEXMEM.read_data_2 = (rEXMEM.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
-              memory.access(rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
+              memory.access(rEXMEM.alu_result*4+400, rMEMWB.read_data, rEXMEM.read_data_2, 0, 1);
           }else
           {
-              memory.access( rEXMEM.alu_result*4, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
+              memory.access( rEXMEM.alu_result*4+400, rMEMWB.read_data, rEXMEM.read_data_2, rEXMEM.control.mem_read, rEXMEM.control.mem_write);
           }
       }
 
@@ -1386,17 +1386,17 @@ void io_superscalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_
           //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
           if(rMEMWB1.opcode == 0x29) // store half word jank
           {
-              memory.access(rEXMEM1.alu_result*4, bogus, rEXMEM1.read_data_2, 1, 0);
+              memory.access(rEXMEM1.alu_result*4+400, bogus, rEXMEM1.read_data_2, 1, 0);
               rEXMEM1.read_data_2 = (rEXMEM1.read_data_2 & 0x0000ffff) | (bogus & 0xffff0000);
-              memory.access(rEXMEM1.alu_result*4, rMEMWB1.read_data, rEXMEM1.read_data_2, 0, 1);
+              memory.access(rEXMEM1.alu_result*4+400, rMEMWB1.read_data, rEXMEM1.read_data_2, 0, 1);
           }else if(rMEMWB1.opcode == 0x28) // store half byte jank
           {
-              memory.access(rEXMEM1.alu_result*4, bogus, rEXMEM1.read_data_2, 1, 0);
+              memory.access(rEXMEM1.alu_result*4+400, bogus, rEXMEM1.read_data_2, 1, 0);
               rEXMEM1.read_data_2 = (rEXMEM1.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
-              memory.access(rEXMEM1.alu_result*4, rMEMWB1.read_data, rEXMEM1.read_data_2, 0, 1);
+              memory.access(rEXMEM1.alu_result*4+400, rMEMWB1.read_data, rEXMEM1.read_data_2, 0, 1);
           }else
           {
-              memory.access( rEXMEM1.alu_result*4, rMEMWB1.read_data, rEXMEM1.read_data_2, rEXMEM1.control.mem_read, rEXMEM1.control.mem_write);
+              memory.access( rEXMEM1.alu_result*4+400, rMEMWB1.read_data, rEXMEM1.read_data_2, rEXMEM1.control.mem_read, rEXMEM1.control.mem_write);
           }
       }
 
@@ -1415,17 +1415,17 @@ void io_superscalar_main_loop(Registers &reg_file, Memory &memory, uint32_t end_
           //~~~~~~~~~~~~~~~~~~~~~STORE HALF WOES AND BYTE LOGIC~~~~~~~~~~~~~~~~~~~~~
           if(rMEMWB2.opcode == 0x29) // store half word jank
           {
-              memory.access(rEXMEM2.alu_result*4, bogus, rEXMEM2.read_data_2, 1, 0);
+              memory.access(rEXMEM2.alu_result*4+400, bogus, rEXMEM2.read_data_2, 1, 0);
               rEXMEM2.read_data_2 = (rEXMEM2.read_data_2 & 0x0000ffff) | (bogus & 0xffff0000);
-              memory.access(rEXMEM2.alu_result*4, rMEMWB2.read_data, rEXMEM2.read_data_2, 0, 1);
+              memory.access(rEXMEM2.alu_result*4+400, rMEMWB2.read_data, rEXMEM2.read_data_2, 0, 1);
           }else if(rMEMWB2.opcode == 0x28) // store half byte jank
           {
-              memory.access(rEXMEM2.alu_result*4, bogus, rEXMEM2.read_data_2, 1, 0);
+              memory.access(rEXMEM2.alu_result*4+400, bogus, rEXMEM2.read_data_2, 1, 0);
               rEXMEM2.read_data_2 = (rEXMEM2.read_data_2 & 0x000000ff) | (bogus & 0xffffff00);
-              memory.access(rEXMEM2.alu_result*4, rMEMWB2.read_data, rEXMEM2.read_data_2, 0, 1);
+              memory.access(rEXMEM2.alu_result*4+400, rMEMWB2.read_data, rEXMEM2.read_data_2, 0, 1);
           }else
           {
-              memory.access( rEXMEM2.alu_result*4, rMEMWB2.read_data, rEXMEM2.read_data_2, rEXMEM2.control.mem_read, rEXMEM2.control.mem_write);
+              memory.access( rEXMEM2.alu_result*4+400, rMEMWB2.read_data, rEXMEM2.read_data_2, rEXMEM2.control.mem_read, rEXMEM2.control.mem_write);
           }
       }
 
